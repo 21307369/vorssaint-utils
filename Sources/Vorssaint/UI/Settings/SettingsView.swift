@@ -156,7 +156,6 @@ struct GeneralSettings: View {
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
     @State private var loginError: String?
     @AppStorage(DefaultsKey.hotkeyEnabled) private var hotkeyEnabled = true
-    @AppStorage(DefaultsKey.showCountdown) private var showCountdown = false
     @AppStorage(DefaultsKey.musicBlockEnabled) private var musicBlockEnabled = false
     @AppStorage(DefaultsKey.musicBlockReplacementPath) private var musicBlockReplacementPath = ""
 
@@ -194,9 +193,6 @@ struct GeneralSettings: View {
                 .pickerStyle(.segmented)
             }
             Section(l10n.s.menuBarSection) {
-                if AppFeature.keepAwake.isAvailable {
-                    Toggle(l10n.s.showCountdown, isOn: $showCountdown)
-                }
                 Button(l10n.s.showMenuBarIcon) {
                     appDelegate()?.reshowStatusItem()
                 }
@@ -387,6 +383,7 @@ struct EnergySettings: View {
     @AppStorage(DefaultsKey.defaultDuration) private var defaultDuration = 0
     @AppStorage(DefaultsKey.batteryLimit) private var batteryLimit = 10
     @AppStorage(DefaultsKey.keepAwakeAutoStart) private var keepAwakeAutoStart = false
+    @AppStorage(DefaultsKey.showCountdown) private var showCountdown = false
     @AppStorage(DefaultsKey.keepAwakeIconTint) private var keepAwakeIconTint = KeepAwakeIconTint.orange.rawValue
     @AppStorage(DefaultsKey.keepAwakeActiveIcon) private var keepAwakeActiveIcon = KeepAwakeActiveIcon.vorssaint.rawValue
     @AppStorage(DefaultsKey.keepAwakeMouseJiggleEnabled) private var keepAwakeMouseJiggle = false
@@ -408,6 +405,10 @@ struct EnergySettings: View {
                     SettingsToggleWithCaption(title: l10n.s.keepAwakeAutoStart,
                                               caption: l10n.s.keepAwakeAutoStartCaption,
                                               isOn: $keepAwakeAutoStart)
+                    // The countdown is a Keep Awake session readout, so it sits
+                    // with the session options. Under the General page's menu
+                    // bar section the label gave no clue which time it meant.
+                    Toggle(l10n.s.showCountdown, isOn: $showCountdown)
                 }
                 Section(automationStrings.automationSection) {
                     SettingsCaptionText(automationStrings.automationCaption)
@@ -879,6 +880,7 @@ struct SwitcherSettings: View {
             if AppFeature.switcher.isAvailable || AppFeature.dockPreview.isAvailable {
                 Section {
                     Picker(l10n.s.previewSizeLabel, selection: $previewSize) {
+                        Text(l10n.s.previewSizeSmall).tag("small")
                         Text(l10n.s.previewSizeNormal).tag("normal")
                         Text(l10n.s.previewSizeLarge).tag("large")
                         Text(l10n.s.previewSizeXLarge).tag("xlarge")

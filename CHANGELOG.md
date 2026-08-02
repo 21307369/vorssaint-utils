@@ -7,9 +7,9 @@ All notable changes to this project are documented here. The format follows
 ## [3.3.0]
 
 ### Summary
-Vorssaint 3.3.0 records the screen. The recording opens in an editor that cuts
-it, smooths the pointer, leans in on every click and puts a background behind
-it.
+Vorssaint 3.3.0 records the screen and opens each recording in an editor that
+cuts it, smooths the pointer, zooms on clicks and adds a background. Window
+previews can also be made smaller.
 
 ### Added
 - Screen recording. Records an area, a window or the whole screen with the
@@ -17,8 +17,22 @@ it.
   default.
 - A slider for how solid the Dock preview panel looks. Under Switcher, with
   Dock Preview on. Thanks to @ruvelro.
+- Apps the clipboard history skips, so nothing copied in them is saved. Under
+  Clipboard. Thanks to @CSkjolden.
+
+### Changed
+- App Switcher and Dock Preview now have a Small size that reduces previews and
+  the space between them. Thanks to @CSkjolden.
+- The clipboard history no longer saves a copy that an app marks as a
+  password, whatever the other options are set to.
+- The remaining-time menu bar option now lives with Keep Awake session settings
+  under Energy. Thanks to @hash00.
 
 ### Fixed
+- The clipboard history no longer drops plain identifier codes when it is set
+  to skip text that looks sensitive.
+- Picking a window on another desktop now switches over right away, instead of
+  stalling for a couple of seconds. Thanks to @CSkjolden.
 - The mouse side buttons now go back and forward on keyboard layouts such as
   German and French, where they did nothing at all. Thanks to @thomas-goerlich.
 - Extra brightness now holds while you swipe between desktops, instead of

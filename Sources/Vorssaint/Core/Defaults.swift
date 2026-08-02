@@ -324,6 +324,7 @@ enum DefaultsKey {
     static let clipboardHistoryLimit = "clipboardHistoryLimit"
     static let clipboardHistorySkipSensitive = "clipboardHistorySkipSensitive"
     static let clipboardHistoryIncludeImagesFiles = "clipboardHistoryIncludeImagesFiles" // capture copied images and files too
+    static let clipboardHistoryIgnoredApps = "clipboardHistoryIgnoredApps" // apps whose copies are never saved
     // Quick tools: paste as plain text, color picker, screen OCR, mic mute.
     static let pastePlainEnabled = "pastePlainEnabled"
     static let pastePlainShortcut = "pastePlainShortcut"
@@ -585,6 +586,7 @@ enum PreviewSizing {
 
     static var scale: CGFloat {
         switch sanitized(UserDefaults.standard.string(forKey: DefaultsKey.previewSize) ?? "normal") {
+        case "small": return 0.75
         case "large": return 1.4
         case "xlarge": return 1.8
         default: return 1.0
@@ -614,7 +616,7 @@ enum Defaults {
     ]
     static let allowedMenuBarLabelStyles = ["compact", "classic"]
     static let allowedMenuBarMemoryStyles = ["dot", "percent", "both"]
-    static let allowedPreviewSizes = ["normal", "large", "xlarge"]
+    static let allowedPreviewSizes = ["small", "normal", "large", "xlarge"]
     static let allowedClipboardHistoryLimits = [20, 50, 100, 250, 500, 1_000]
     static let allowedMonitorAlertCooldowns = [2, 5, 15, 30, 60]
 
@@ -888,6 +890,7 @@ enum Defaults {
         DefaultsKey.clipboardHistoryLimit: 50,
         DefaultsKey.clipboardHistorySkipSensitive: true,
         DefaultsKey.clipboardHistoryIncludeImagesFiles: true,
+        DefaultsKey.clipboardHistoryIgnoredApps: [String](),
         DefaultsKey.pastePlainEnabled: false,
         DefaultsKey.pastePlainShortcut: GlobalShortcut.pastePlainDefault.storageValue,
         DefaultsKey.colorPickerShortcutEnabled: false,
