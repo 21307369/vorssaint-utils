@@ -2732,6 +2732,63 @@ struct MetricsTests {
         expect(WindowLayoutAction.resolvedShortcut(storedValue: "garbage-value", defaultShortcut: nil) == nil,
                "a corrupt shortcut cannot assign an action that has no default")
 
+        // MARK: Window layout restore history (issue #414)
+
+        let historyWindow = WindowLayoutWindowKey(processID: 41,
+                                                  processLaunchTime: 100,
+                                                  windowID: 414)
+        let otherHistoryWindow = WindowLayoutWindowKey(processID: 42,
+                                                       processLaunchTime: 100,
+                                                       windowID: 414)
+        let reusedHistoryWindow = WindowLayoutWindowKey(processID: 41,
+                                                        processLaunchTime: 101,
+                                                        windowID: 414)
+        let historyFrames = (0...WindowLayoutHistory.perWindowLimit).map {
+            WindowLayoutFrame(origin: CGPoint(x: $0 * 10, y: $0 * 20),
+                              size: CGSize(width: 800 + $0, height: 500 + $0))
+        }
+        var layoutHistory = WindowLayoutHistory()
+        layoutHistory.record(historyFrames[0], for: historyWindow)
+        layoutHistory.record(historyFrames[1], for: historyWindow)
+        layoutHistory.record(historyFrames[2], for: historyWindow)
+        layoutHistory.record(historyFrames[3], for: otherHistoryWindow)
+        expect(layoutHistory.popPrevious(for: historyWindow, current: historyFrames[3]) == historyFrames[2]
+               && layoutHistory.popPrevious(for: historyWindow, current: historyFrames[2]) == historyFrames[1]
+               && layoutHistory.popPrevious(for: historyWindow, current: historyFrames[1]) == historyFrames[0],
+               "window layout restore walks backward through each window's placement history")
+        expect(layoutHistory.popPrevious(for: otherHistoryWindow, current: historyFrames[4]) == historyFrames[3],
+               "window layout restore histories stay isolated across processes")
+        layoutHistory.record(historyFrames[5], for: historyWindow)
+        layoutHistory.record(historyFrames[6], for: historyWindow)
+        layoutHistory.discardLatest(for: historyWindow)
+        expect(layoutHistory.popPrevious(for: historyWindow, current: historyFrames[7]) == historyFrames[5],
+               "a failed window layout action removes only the frame it recorded")
+        layoutHistory.record(historyFrames[8], for: historyWindow)
+        layoutHistory.record(historyFrames[9], for: historyWindow)
+        expect(layoutHistory.popPrevious(for: historyWindow, current: historyFrames[9]) == historyFrames[8],
+               "restore skips a saved frame that already matches the current placement")
+        layoutHistory.record(historyFrames[10], for: historyWindow)
+        layoutHistory.record(historyFrames[11], for: reusedHistoryWindow)
+        layoutHistory.removeStaleWindows(keeping: [reusedHistoryWindow])
+        expect(layoutHistory.popPrevious(for: historyWindow, current: historyFrames[12]) == nil
+               && layoutHistory.popPrevious(for: reusedHistoryWindow,
+                                            current: historyFrames[12]) == historyFrames[11],
+               "closed windows and earlier process lifetimes cannot leak restore history")
+        var boundedHistory = WindowLayoutHistory()
+        for frame in historyFrames {
+            boundedHistory.record(frame, for: historyWindow)
+        }
+        var boundedFrames: [WindowLayoutFrame] = []
+        var boundedCurrent = WindowLayoutFrame(origin: CGPoint(x: -1, y: -1),
+                                               size: CGSize(width: 1, height: 1))
+        while let previous = boundedHistory.popPrevious(for: historyWindow, current: boundedCurrent) {
+            boundedFrames.append(previous)
+            boundedCurrent = previous
+        }
+        expect(boundedFrames.count == WindowLayoutHistory.perWindowLimit
+               && boundedFrames.last == historyFrames[1],
+               "window layout history keeps only the most recent bounded set of placements")
+
         // MARK: Window layout geometry
 
         let visibleFrame = CGRect(x: 0, y: 40, width: 1440, height: 860)
@@ -6590,6 +6647,10 @@ struct MetricsTests {
                "every feature belongs to exactly one group")
         expect(!FeatureGroup.allCases.contains { AppFeature.features(in: $0).isEmpty },
                "no hub group is empty")
+        expect(AppPermission.allCases.map(\.rawValue) == [
+            "accessibility", "screenRecording", "fullDiskAccess", "filesAndFolders", "notifications",
+            "automationFinder", "automationTerminal", "audioCapture", "camera", "appManagement",
+        ], "permission portal contains every supported permission")
 
         func activeSet(_ permission: AppPermission,
                        available: Set<AppFeature> = Set(AppFeature.allCases),
@@ -6667,6 +6728,10 @@ struct MetricsTests {
         expect(AppFeature.quickToggles.permissions == [.automationFinder],
                "the quick toggles need no permission beyond the Trash's Finder ask")
         expect(activeSet(.automationTerminal) == [.homebrew], "homebrew drives the Terminal")
+        expect(activeSet(.appManagement) == [.homebrew, .appUpdates],
+               "package and app updates declare App Management access")
+        expect(AppFeature.homebrew.permissions == [.automationTerminal, .appManagement],
+               "the package manager declares both permissions used by its operations")
         expect(activeSet(.audioCapture) == [.mixer], "the mixer is the only audio capture user")
         expect(activeSet(.audioCapture, available: Set(AppFeature.allCases).subtracting([.mixer])) == [],
                "audio capture reads as unused once the mixer is off in the hub")
@@ -6812,7 +6877,7 @@ struct MetricsTests {
                    "no em-dash in visible radial menu strings (\(language.rawValue))")
             let scratchpadValues = Mirror(reflecting: FeatureStrings.scratchpad(language)).children
                 .compactMap { $0.value as? String }
-            expect(scratchpadValues.count == 16 && scratchpadValues.allSatisfy { !$0.isEmpty },
+            expect(scratchpadValues.count == 17 && scratchpadValues.allSatisfy { !$0.isEmpty },
                    "every scratchpad string is set for \(language.rawValue)")
             expect(scratchpadValues.allSatisfy { !$0.contains("—") },
                    "no em-dash in visible scratchpad strings (\(language.rawValue))")
@@ -8091,6 +8156,10 @@ struct MetricsTests {
                 && ScratchpadRetention.week.maxIdleInterval == 7 * 86_400
                 && ScratchpadRetention.month.maxIdleInterval == 30 * 86_400,
                "scratchpad retention periods are a day, a week and thirty days")
+        expect(ScratchpadSupport.dismissesOnOutsideClick(isPinned: false, exportModalActive: false)
+                && !ScratchpadSupport.dismissesOnOutsideClick(isPinned: true, exportModalActive: false)
+                && !ScratchpadSupport.dismissesOnOutsideClick(isPinned: false, exportModalActive: true),
+               "the scratchpad pin and export dialog both block outside-click dismissal")
         let scratchpadNow = Date(timeIntervalSince1970: 1_784_000_000)
         expect(!ScratchpadSupport.shouldClear(lastEdited: nil, now: scratchpadNow, retention: .day)
                 && !ScratchpadSupport.shouldClear(lastEdited: scratchpadNow.addingTimeInterval(-90_000),
@@ -8173,6 +8242,10 @@ struct MetricsTests {
                 && RadialMenuActivationMode.hold.releaseAction(hasSelection: false) == .dismiss
                 && RadialMenuActivationMode.hold.releaseAction(hasSelection: true) == .select,
                "release keeps the adaptive wheel, dismisses an empty strict hold, or selects its target")
+        expect(RadialMenuSupport.shortcutIsStillHeld(modifiersHeld: true, superKeyHeld: false)
+                && RadialMenuSupport.shortcutIsStillHeld(modifiersHeld: false, superKeyHeld: true)
+                && !RadialMenuSupport.shortcutIsStillHeld(modifiersHeld: false, superKeyHeld: false),
+               "the radial hold follows physical modifiers or the virtual super key")
         expect(RadialMenuMouseTrigger.sanitized("back") == .back
                 && RadialMenuMouseTrigger.sanitized("forward").buttonNumber == 4
                 && RadialMenuMouseTrigger.back.buttonNumber == 3
@@ -8367,10 +8440,11 @@ struct MetricsTests {
                "with the key up, typing is untouched")
         expect(superKeyState.decide(.triggerDown(isRepeat: false)) == .swallow,
                "the key itself never reaches an app")
-        expect(superKeyState.decide(.otherKey) == .addModifiers
+        expect(superKeyState.isHeld
+                && superKeyState.decide(.otherKey) == .addModifiers
                 && superKeyState.decide(.otherKey) == .addModifiers,
                "every key pressed while it is held carries the four modifiers")
-        expect(superKeyState.decide(.triggerUp) == .swallow,
+        expect(superKeyState.decide(.triggerUp) == .swallow && !superKeyState.isHeld,
                "releasing after a combination does nothing on its own")
 
         // What the watchdog leans on: a press whose release never arrived is
@@ -8881,9 +8955,9 @@ struct MetricsTests {
                 && !SettingsBackupSupport.exportKeys().contains(DefaultsKey.appUpdatesLastCheck),
                "the schedule travels in a backup, the last check does not")
         expect(AppFeature.appUpdates.enabledKeys.isEmpty
-                && AppFeature.appUpdates.permissions == [.notifications]
+                && AppFeature.appUpdates.permissions == [.notifications, .appManagement]
                 && AppFeature.appUpdates.group == .tools,
-               "app updates is an on demand tool that can only notify")
+               "app updates is an on demand tool that declares its update access")
         expect(FeatureVisibilitySupport.features(for: .appUpdates) == [.appUpdates]
                 && !FeatureVisibilitySupport.isPageVisible(.appUpdates, isAvailable: { _ in false }),
                "the page follows the feature in the hub")
