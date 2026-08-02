@@ -10,6 +10,7 @@ enum CPUTemperaturePlatform: Equatable {
     case appleM3Family
     case appleM4Family
     case appleM5Family
+    case intel
     case generic
 }
 
@@ -55,8 +56,12 @@ enum TemperatureSensorSelector {
         case 3: return .appleM3Family
         case 4: return .appleM4Family
         case 5: return .appleM5Family
-        default: return .generic
+        default: break
         }
+        if brand.localizedCaseInsensitiveContains("Intel") {
+            return .intel
+        }
+        return .generic
     }
 
     static func currentPlatform() -> CPUTemperaturePlatform {
@@ -85,7 +90,7 @@ enum TemperatureSensorSelector {
 
     static func hasCPUCoreSet(platform: CPUTemperaturePlatform) -> Bool {
         switch platform {
-        case .appleM1Family, .appleM2Family, .appleM3Family, .appleM4Family, .appleM5Family:
+        case .appleM1Family, .appleM2Family, .appleM3Family, .appleM4Family, .appleM5Family, .intel:
             return true
         case .generic: return false
         }
@@ -103,10 +108,20 @@ enum TemperatureSensorSelector {
             return appleM4CPUCoreKeys.contains(key)
         case .appleM5Family:
             return appleM5CPUCoreKeys.contains(key)
+        case .intel:
+            return intelCPUCoreKeys.contains(key)
         case .generic:
             return false
         }
     }
+
+    /// Intel core temperature keys follow the classic `TC<n>C` pattern (TC0C,
+    /// TC1C, …); TC0E/TC0D are the die/uncore readings used as fallbacks.
+    private static let intelCPUCoreKeys: Set<String> = [
+        "TC0C", "TC1C", "TC2C", "TC3C", "TC4C", "TC5C", "TC6C", "TC7C",
+        "TC8C", "TC9C", "TCAC", "TCBC", "TCCC", "TCDC", "TCEC", "TCFC",
+        "TC0E", "TC0D",
+    ]
 
     private static func appleSiliconGeneration(in brand: String) -> Int? {
         guard brand.hasPrefix("Apple M") else { return nil }

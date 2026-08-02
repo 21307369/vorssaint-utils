@@ -30,7 +30,14 @@ else
     APP_NAME="Vorssaint"
     EXECUTABLE="Vorssaint"
 fi
-TARGET="arm64-apple-macosx14.0"
+# Compile for the machine we are on: Apple Silicon builds arm64, Intel builds
+# x86_64. Official releases are Apple Silicon only, but the code builds and
+# runs on both.
+case "$(uname -m)" in
+    arm64)   TARGET="arm64-apple-macosx14.0" ;;
+    x86_64)  TARGET="x86_64-apple-macosx14.0" ;;
+    *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+esac
 ENTITLEMENTS="Resources/Vorssaint.entitlements"
 LEGACY_IDENTITY="Vorssaint Utils Signing"
 

@@ -421,6 +421,7 @@ struct MixerSection: View {
 
     @ViewBuilder
     private var mixerRows: some View {
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             GlassEffectContainer(spacing: 8) {
                 rowList
@@ -428,6 +429,9 @@ struct MixerSection: View {
         } else {
             rowList
         }
+        #else
+        rowList
+        #endif
     }
 
     @ViewBuilder
@@ -771,6 +775,7 @@ private struct LiquidGlassMixerSlider: View {
 
     @ViewBuilder
     private var knobFill: some View {
+        #if compiler(>=6.2)
         if reduceTransparency {
             Capsule()
                 .fill(Color(nsColor: .controlBackgroundColor))
@@ -779,6 +784,11 @@ private struct LiquidGlassMixerSlider: View {
             Color.clear
                 .glassEffect(.regular.tint(tint.opacity(isBoosting ? 0.18 : 0.10)).interactive(), in: Capsule())
         }
+        #else
+        Capsule()
+            .fill(Color(nsColor: .controlBackgroundColor))
+            .overlay(Capsule().fill(tint.opacity(colorScheme == .light ? 0.10 : 0.16)))
+        #endif
     }
 
     private func updateValue(at x: CGFloat, width: CGFloat) {

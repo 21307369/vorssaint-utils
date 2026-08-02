@@ -181,6 +181,8 @@ The shelf and almost every quick toggle need no permission at all. Finder cut an
 - A Mac with Apple Silicon
 - macOS 14 Sonoma or newer
 
+Intel Macs (macOS 14+) can also build and run Vorssaint from source; official releases remain Apple Silicon only.
+
 ### Build it yourself
 
 ```sh

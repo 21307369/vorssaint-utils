@@ -916,6 +916,20 @@ struct MetricsTests {
                "Apple M5 uses the mapped CPU core sensor set")
         expect(TemperatureSensorSelector.platform(brandString: "Apple M10") == .generic,
                "future unmapped Apple Silicon generations keep the generic CPU sensor path")
+        expect(TemperatureSensorSelector.platform(brandString: "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz") == .intel,
+               "Intel brand strings map to the Intel CPU sensor set")
+        expect(TemperatureSensorSelector.platform(brandString: "intel core i5-8250u") == .intel,
+               "Intel detection is case insensitive")
+        expect(TemperatureSensorSelector.platform(brandString: nil) == .generic,
+               "missing brand strings keep the generic CPU sensor path")
+        expect(TemperatureSensorSelector.isCPUCoreKey("TC0C", platform: .intel),
+               "TC<n>C keys are Intel CPU core sensors")
+        expect(TemperatureSensorSelector.isCPUCoreKey("TC0E", platform: .intel),
+               "TC0E die/uncore reading counts as an Intel CPU core fallback")
+        expect(!TemperatureSensorSelector.isCPUCoreKey("TC0F", platform: .intel),
+               "TC0F is not an Intel CPU core sensor")
+        expect(!TemperatureSensorSelector.isCPUCoreKey("TC0c", platform: .intel),
+               "lowercase TC<n>c package readings are not Intel CPU cores")
         let m1CPU = TemperatureSensorSelector.displayedCPUTemperature(
             readings: [("Tp09", 43.0), ("Tp01", 49.0), ("Tp02", 70.0)],
             platform: .appleM1Family
@@ -956,6 +970,16 @@ struct MetricsTests {
             platform: .generic
         )
         expectClose(genericCPU ?? -1, 51.6, "generic CPU sensor selection preserves previous hottest behavior")
+        let intelCPU = TemperatureSensorSelector.displayedCPUTemperature(
+            readings: [("TC0C", 50.0), ("TC1C", 65.0), ("TC2C", 44.0), ("TC0F", 88.0)],
+            platform: .intel
+        )
+        expectClose(intelCPU ?? -1, 65.0, "Intel uses hottest mapped CPU core instead of auxiliary hotspots")
+        let intelFallbackCPU = TemperatureSensorSelector.displayedCPUTemperature(
+            readings: [("TC0F", 70.0), ("TC0H", 60.0)],
+            platform: .intel
+        )
+        expectClose(intelFallbackCPU ?? -1, 70.0, "Intel CPU selection falls back when no mapped sensor is available")
 
         // MARK: Hot CPU alert
 
@@ -6895,10 +6919,10 @@ struct MetricsTests {
 
         let ddcWrite = BrightnessSupport.writePacket(code: 0x10, value: 0x1234)
         expect(ddcWrite == [0x84, 0x03, 0x10, 0x12, 0x34,
-                            0x6E ^ 0x51 ^ 0x84 ^ 0x03 ^ 0x10 ^ 0x12 ^ 0x34],
+                            UInt8(0x6E ^ 0x51 ^ 0x84 ^ 0x03 ^ 0x10 ^ 0x12 ^ 0x34)],
                "DDC write packet carries the set opcode, big-endian value and checksum")
         let ddcRead = BrightnessSupport.readRequestPacket(code: 0x10)
-        expect(ddcRead == [0x82, 0x01, 0x10, 0x6E ^ 0x82 ^ 0x01 ^ 0x10],
+        expect(ddcRead == [0x82, 0x01, 0x10, UInt8(0x6E ^ 0x82 ^ 0x01 ^ 0x10)],
                "DDC read request omits the sub-address from its checksum seed")
         expect(Array(BrightnessSupport.writePacket(code: 0x10, value: 100)[3...4]) == [0x00, 0x64],
                "DDC values split into high and low bytes")
