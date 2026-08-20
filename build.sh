@@ -35,7 +35,16 @@ else
     BUILD_VARIANT_FLAGS=()
 fi
 FAN_HELPER_ID="$APP_BUNDLE_ID.fan-control"
-TARGET="arm64-apple-macosx14.0"
+# Compile for the machine we are on: Apple Silicon builds arm64, Intel builds
+# x86_64. Official releases are Apple Silicon only, but the code builds and
+# runs on both. Set TARGET env var to override (e.g. for cross-compilation).
+if [[ -z "${TARGET:-}" ]]; then
+    case "$(uname -m)" in
+        arm64)   TARGET="arm64-apple-macosx14.0" ;;
+        x86_64)  TARGET="x86_64-apple-macosx14.0" ;;
+        *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+    esac
+fi
 ENTITLEMENTS="Resources/Vorssaint.entitlements"
 LEGACY_IDENTITY="Vorssaint Utils Signing"
 

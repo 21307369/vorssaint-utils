@@ -43,7 +43,12 @@ enum SelfTest {
         }
 
         if let smc = SMCClient() {
-            let keys = smc.keys { $0.hasPrefix("Tp") || $0.hasPrefix("Te") || $0.hasPrefix("Tg") }
+            let keys = smc.keys { name in
+                name.hasPrefix("Tp") || name.hasPrefix("Te") || name.hasPrefix("Tg")
+                    || name.range(of: "^TB[0-9]T$", options: .regularExpression) != nil
+                    || name.hasPrefix("TC") || name.hasPrefix("TG") || name.hasPrefix("TM")
+                    || name.hasPrefix("Ts")
+            }
             if keys.isEmpty {
                 warnings.append("no SMC temperature keys")
             } else if keys.compactMap({ smc.readValue($0) }).isEmpty {
@@ -165,6 +170,8 @@ enum SensorDump {
         let keys = smc.keys { name in
             name.hasPrefix("Tp") || name.hasPrefix("Te") || name.hasPrefix("Tg")
                 || name.range(of: "^TB[0-9]T$", options: .regularExpression) != nil
+                || name.hasPrefix("TC") || name.hasPrefix("TG") || name.hasPrefix("TM")
+                || name.hasPrefix("Ts")
         }
         let cpuPlatform = TemperatureSensorSelector.currentPlatform()
         let hasCPUCoreSet = TemperatureSensorSelector.hasCPUCoreSet(platform: cpuPlatform)

@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches: [main, 'tweak/**']
 
 jobs:
   compatibility:
@@ -40,9 +39,24 @@ jobs:
           SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: ./Tools/ci-setup-signing.sh
 
-      - name: Build
-        run: ./build.sh
+      - name: Unit tests
+        run: ./build.sh --test
 
+      - name: Build arm64
+        run: TARGET="arm64-apple-macosx14.0" ./build.sh
+      - name: Save arm64 binaries
+        run: |
+          mkdir -p dist/arm64
+          cp build/Vorssaint dist/arm64/
+          cp build/FanControlHelper dist/arm64/ 2>/dev/null || true
+      - name: Build x86_64
+        run: TARGET="x86_64-apple-macosx14.0" ./build.sh
+      - name: Create universal binary
+        run: |
+          lipo -create dist/arm64/Vorssaint build/Vorssaint -output build/Vorssaint
+          if [[ -f dist/arm64/FanControlHelper ]]; then
+            lipo -create dist/arm64/FanControlHelper build/FanControlHelper -output build/FanControlHelper
+          fi
       - name: Selftest
         run: ./build/Vorssaint --selftest
 
